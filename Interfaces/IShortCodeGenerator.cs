@@ -2,5 +2,5 @@ namespace UrlShortener.Interfaces;
 
 public interface IShortCodeGenerator
 {
-    string GenerateShortCode();
+    string GenerateShortCode(long id);
 }
