@@ -14,6 +14,7 @@ var app = builder.Build();
 var generator = app.Services.GetRequiredService<IIdGenerator>();
 var shortCodeGenerator = app.Services.GetRequiredService<IShortCodeGenerator>();
 
+
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();

@@ -1,6 +1,6 @@
 namespace UrlShortener.Schema;
 
-public class UrlMapping
+public class Urls
 {
     public long Id { get; init; }
     public string ShortCode { get; init; } = string.Empty;
