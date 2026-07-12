@@ -12,7 +12,12 @@ public class UrlController(IUrlShortenerService urlShortenerService) : Controlle
     [Route("short_url")]
     public async Task<IActionResult> ShortenUrl([FromBody] string url)
     {
-        Console.WriteLine($"url {url}");
+        if (url is null)
+            return BadRequest("Please provide url.");
+
+        if (!Uri.TryCreate(url, UriKind.Absolute, out var uriResult) || (uriResult.Scheme != Uri.UriSchemeHttp && uriResult.Scheme != Uri.UriSchemeHttps))
+            return BadRequest("Please provide valid url.");
+
         try
         {
             var result = await urlShortenerService.ShortenUrl(url);
