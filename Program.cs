@@ -22,6 +22,7 @@ builder.Services.AddSingleton<IShortCodeGenerator, Base62CodeGenerator>();
 builder.Services.AddScoped<IUrlRepository, UrlRepository>();
 builder.Services.AddSingleton<ICacheService, RedisCacheService>();
 builder.Services.AddScoped<IUrlShortenerService, UrlShortenerService>();
+builder.Services.AddHealthChecks();
 
 Dapper.DefaultTypeMap.MatchNamesWithUnderscores = true;
 
@@ -40,6 +41,7 @@ builder.Services.AddRateLimiter(options =>
 var app = builder.Build();
 app.UseRateLimiter();
 app.MapControllers().RequireRateLimiting("fixed");
+app.MapHealthChecks("/health");
 
 if (app.Environment.IsDevelopment())
 {
