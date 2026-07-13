@@ -17,7 +17,7 @@ jobs:
         dotnet-version: '10.0.x'
 
     - name: Publish
-      run: dotnet publish Server/UrlShortener/UrlShortener.csproj -c Release -r linux-x64 --self-contained false -o ./publish
+      run: dotnet publish UrlShortener.csproj -c Release -r linux-x64 --self-contained false -o ./publish
 
     - name: Deploy to EC2
       uses: appleboy/scp-action@v0.1.4
