@@ -1,6 +1,8 @@
 using UrlShortener.Interfaces;
 using UrlShortener.Repositories;
 using UrlShortener.Services;
+using Microsoft.AspNetCore.RateLimiting;
+using System.Threading.RateLimiting;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -15,7 +17,21 @@ builder.Services.AddScoped<IUrlShortenerService, UrlShortenerService>();
 
 Dapper.DefaultTypeMap.MatchNamesWithUnderscores = true;
 
+builder.Services.AddRateLimiter(options =>
+{
+    options.AddFixedWindowLimiter("fixed", opt =>
+    {
+        opt.PermitLimit = 10;
+        opt.Window = TimeSpan.FromSeconds(10);
+        opt.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
+        opt.QueueLimit = 0;
+    });
+    options.RejectionStatusCode = 429;
+});
+
 var app = builder.Build();
+app.UseRateLimiter();
+app.MapControllers().RequireRateLimiting("fixed");
 
 if (app.Environment.IsDevelopment())
 {
