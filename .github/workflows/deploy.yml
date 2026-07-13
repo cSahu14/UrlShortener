@@ -30,16 +30,26 @@ jobs:
       run: |
         zip -r deploy.zip ./publish
         aws s3 cp deploy.zip s3://${{ secrets.S3_BUCKET }}/deploy.zip
+        aws s3 sync Db/Migrations/ s3://${{ secrets.S3_BUCKET }}/migrations/
 
     - name: Deploy via SSM
       run: |
         aws ssm send-command \
           --instance-ids ${{ secrets.EC2_INSTANCE_ID }} \
           --document-name "AWS-RunShellScript" \
-          --parameters 'commands=[
-            "aws s3 cp s3://${{ secrets.S3_BUCKET }}/deploy.zip /home/ubuntu/deploy.zip --region ${{ secrets.AWS_REGION }}",
-            "cd /home/ubuntu && unzip -o deploy.zip -d app",
-            "pkill -f UrlShortener || true",
-            "nohup dotnet /home/ubuntu/app/publish/UrlShortener.dll > /home/ubuntu/app.log 2>&1 &"
-          ]' \
+          --parameters '{"commands":[
+            "set -e",
+            "# Install .NET if not present",
+            "if ! command -v dotnet &> /dev/null; then wget https://packages.microsoft.com/config/ubuntu/24.04/packages-microsoft-prod.deb -O /tmp/packages-microsoft-prod.deb && sudo dpkg -i /tmp/packages-microsoft-prod.deb && sudo apt-get update && sudo apt-get install -y aspnetcore-runtime-10.0; fi",
+            "# Install AWS CLI if not present",
+            "if ! command -v aws &> /dev/null; then curl https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip -o /tmp/awscliv2.zip && unzip /tmp/awscliv2.zip -d /tmp && sudo /tmp/aws/install; fi",
+            "# Download and extract app",
+            "aws s3 cp s3://${{ secrets.S3_BUCKET }}/deploy.zip /tmp/deploy.zip --region ${{ secrets.AWS_REGION }}",
+            "sudo unzip -o /tmp/deploy.zip -d /home/ubuntu/app",
+            "# Run all migrations in order",
+            "aws s3 sync s3://${{ secrets.S3_BUCKET }}/migrations/ /tmp/migrations/ --region ${{ secrets.AWS_REGION }}",
+            "for f in $(ls /tmp/migrations/*.sql | sort); do sudo -u ubuntu psql \"$ConnectionStrings__DefaultConnection\" -f $f || true; done",
+            "# Restart service",
+            "sudo systemctl restart urlshortener"
+          ]}' \
           --region ${{ secrets.AWS_REGION }}
