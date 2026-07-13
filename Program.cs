@@ -10,6 +10,7 @@ builder.Services.AddSwaggerGen();
 builder.Services.AddSingleton<IIdGenerator, SnowFlakeIdGenerator>();
 builder.Services.AddSingleton<IShortCodeGenerator, Base62CodeGenerator>();
 builder.Services.AddScoped<IUrlRepository, UrlRepository>();
+builder.Services.AddSingleton<ICacheService, RedisCacheService>();
 builder.Services.AddScoped<IUrlShortenerService, UrlShortenerService>();
 
 Dapper.DefaultTypeMap.MatchNamesWithUnderscores = true;
