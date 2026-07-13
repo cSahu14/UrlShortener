@@ -1,5 +1,6 @@
 using UrlShortener.Interfaces;
 using UrlShortener.Schema;
+using Serilog;
 
 namespace UrlShortener.Services;
 
@@ -14,6 +15,7 @@ public class UrlShortenerService(
         Console.WriteLine($"url {url}");
         var id = idGenerator.GenerateId();
         var shortCode = shortCodeGenerator.GenerateShortCode(id);
+        Log.Information("Generated short code: {ShortCode}", shortCode);
 
         var newUrl = new Urls()
         {
@@ -27,6 +29,8 @@ public class UrlShortenerService(
         if (!result)
             throw new InvalidDataException("Can't generate short url.");
 
+        Log.Information("Shortening URL: {Url}", url);
+
         await cacheService.SetAsync(shortCode, url, CacheExpiry);
 
         return shortCode;
@@ -38,6 +42,9 @@ public class UrlShortenerService(
         if (cached != null)
         {
             await urlRepository.IncrementClick(shortCode);
+
+            Log.Information("Cache hit for short code: {ShortCode}", shortCode);
+
             return cached;
         }
 
@@ -47,6 +54,8 @@ public class UrlShortenerService(
             return null;
 
         await cacheService.SetAsync(shortCode, result.OriginalUrl, CacheExpiry);
+
+        Log.Information("Cache miss for short code: {ShortCode}", shortCode);
 
         await urlRepository.IncrementClick(shortCode);
 
