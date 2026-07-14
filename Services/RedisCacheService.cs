@@ -8,13 +8,16 @@ public class RedisCacheService : ICacheService
     public RedisCacheService(IConfiguration configuration)
     {
         var connectionString = configuration["Redis:ConnectionString"]
-            ?? throw new InvalidOperationException("Redis connection string not configured.");
+    ?? throw new InvalidOperationException("Redis connection string not configured.");
 
         var config = ConfigurationOptions.Parse(connectionString);
         config.AbortOnConnectFail = false;
+        config.Ssl = true;
+        config.SslProtocols = System.Security.Authentication.SslProtocols.Tls12;
 
-        var redis = ConnectionMultiplexer.Connect(connectionString);
+        var redis = ConnectionMultiplexer.Connect(config);
         _db = redis.GetDatabase();
+
     }
 
     public async Task<string?> GetAsync(string key)
