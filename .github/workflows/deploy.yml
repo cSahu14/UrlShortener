@@ -32,22 +32,29 @@ jobs:
         aws s3 cp deploy.zip s3://${{ secrets.S3_BUCKET }}/deploy.zip
         aws s3 sync Db/Migrations/ s3://${{ secrets.S3_BUCKET }}/migrations/
 
-    - name: Deploy via SSM
+    - name: Deploy via SSM to all ASG instances
       run: |
+        INSTANCE_IDS=$(aws autoscaling describe-auto-scaling-groups \
+          --auto-scaling-group-names ${{ secrets.ASG_NAME }} \
+          --query 'AutoScalingGroups[0].Instances[?LifecycleState==`InService`].InstanceId' \
+          --output text --region ${{ secrets.AWS_REGION }})
+
+        echo "Deploying to instances: $INSTANCE_IDS"
+
         aws ssm send-command \
-          --instance-ids ${{ secrets.EC2_INSTANCE_ID }} \
+          --instance-ids $INSTANCE_IDS \
           --document-name "AWS-RunShellScript" \
           --parameters '{"commands":[
             "set -e",
             "# Install .NET if not present",
             "if ! command -v dotnet &> /dev/null; then wget https://packages.microsoft.com/config/ubuntu/24.04/packages-microsoft-prod.deb -O /tmp/packages-microsoft-prod.deb && sudo dpkg -i /tmp/packages-microsoft-prod.deb && sudo apt-get update && sudo apt-get install -y aspnetcore-runtime-10.0; fi",
             "# Install AWS CLI if not present",
-            "if ! command -v aws &> /dev/null; then curl https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip -o /tmp/awscliv2.zip && unzip /tmp/awscliv2.zip -d /tmp && sudo /tmp/aws/install; fi",
+            "if ! /usr/local/bin/aws --version &> /dev/null; then curl https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip -o /tmp/awscliv2.zip && unzip /tmp/awscliv2.zip -d /tmp && sudo /tmp/aws/install; fi",
             "# Download and extract app",
-            "aws s3 cp s3://${{ secrets.S3_BUCKET }}/deploy.zip /tmp/deploy.zip --region ${{ secrets.AWS_REGION }}",
+            "/usr/local/bin/aws s3 cp s3://${{ secrets.S3_BUCKET }}/deploy.zip /tmp/deploy.zip --region ${{ secrets.AWS_REGION }}",
             "sudo unzip -o /tmp/deploy.zip -d /home/ubuntu/app",
             "# Run all migrations in order",
-            "aws s3 sync s3://${{ secrets.S3_BUCKET }}/migrations/ /tmp/migrations/ --region ${{ secrets.AWS_REGION }}",
+            "/usr/local/bin/aws s3 sync s3://${{ secrets.S3_BUCKET }}/migrations/ /tmp/migrations/ --region ${{ secrets.AWS_REGION }}",
             "for f in $(ls /tmp/migrations/*.sql | sort); do sudo -u ubuntu psql \"$ConnectionStrings__DefaultConnection\" -f $f || true; done",
             "# Restart service",
             "sudo systemctl restart urlshortener"
