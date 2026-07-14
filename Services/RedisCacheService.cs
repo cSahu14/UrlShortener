@@ -9,6 +9,10 @@ public class RedisCacheService : ICacheService
     {
         var connectionString = configuration["Redis:ConnectionString"]
             ?? throw new InvalidOperationException("Redis connection string not configured.");
+
+        var config = ConfigurationOptions.Parse(connectionString);
+        config.AbortOnConnectFail = false;
+
         var redis = ConnectionMultiplexer.Connect(connectionString);
         _db = redis.GetDatabase();
     }
